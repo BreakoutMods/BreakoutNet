@@ -1,0 +1,14 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net462</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <Deterministic>true</Deterministic>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <ImplicitlyExpandNETStandardFacades>false</ImplicitlyExpandNETStandardFacades>
+    <ValheimServerDir>$(MSBuildThisFileDirectory)..\..</ValheimServerDir>
+    <ValheimManagedDir>$(ValheimServerDir)\valheim_server_Data\Managed</ValheimManagedDir>
+    <BepInExDir>$(ValheimServerDir)\BepInEx</BepInExDir>
+    <BepInExCoreDir>$(BepInExDir)\core</BepInExCoreDir>
+  </PropertyGroup>
+</Project>
