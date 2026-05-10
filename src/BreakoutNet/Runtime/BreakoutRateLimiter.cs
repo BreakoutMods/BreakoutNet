@@ -23,19 +23,27 @@ namespace BreakoutMods.BreakoutNet
 
         internal bool Allow(string key, float now)
         {
+            return Allow(key, now, capacity, refillPerSecond);
+        }
+
+        internal bool Allow(string key, float now, float bucketCapacity, float bucketRefillPerSecond)
+        {
             if (string.IsNullOrWhiteSpace(key))
             {
                 key = "unknown";
             }
 
+            bucketCapacity = Math.Max(1f, bucketCapacity);
+            bucketRefillPerSecond = Math.Max(0f, bucketRefillPerSecond);
+
             Bucket bucket;
             if (!buckets.TryGetValue(key, out bucket))
             {
-                bucket = new Bucket { Tokens = capacity, LastUpdate = now };
+                bucket = new Bucket { Tokens = bucketCapacity, LastUpdate = now };
             }
 
             float elapsed = Math.Max(0f, now - bucket.LastUpdate);
-            bucket.Tokens = Math.Min(capacity, bucket.Tokens + elapsed * refillPerSecond);
+            bucket.Tokens = Math.Min(bucketCapacity, bucket.Tokens + elapsed * bucketRefillPerSecond);
             bucket.LastUpdate = now;
 
             if (bucket.Tokens < 1f)

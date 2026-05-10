@@ -9,7 +9,13 @@ namespace BreakoutMods.BreakoutNet
             public static void Register<TRequest>(string rpcName, BreakoutRpcHandler<TRequest> handler)
                 where TRequest : IBreakoutSerializable, new()
             {
-                BreakoutRpcRegistry.RegisterServer(rpcName, handler);
+                BreakoutRpcRegistry.RegisterServer(rpcName, handler, BreakoutRpcRateLimit.Default);
+            }
+
+            public static void Register<TRequest>(string rpcName, BreakoutRpcHandler<TRequest> handler, BreakoutRpcRateLimit rateLimit)
+                where TRequest : IBreakoutSerializable, new()
+            {
+                BreakoutRpcRegistry.RegisterServer(rpcName, handler, rateLimit);
             }
 
             public static bool SendToClient<TMessage>(long peerId, string rpcName, TMessage message, string senderModGuid = null)

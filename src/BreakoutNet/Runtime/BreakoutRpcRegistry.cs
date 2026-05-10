@@ -11,17 +11,21 @@ namespace BreakoutMods.BreakoutNet
         private static readonly BreakoutRateLimiter InboundClientLimiter = new BreakoutRateLimiter(12f, 8f);
         private static int sequence;
 
-        public static void RegisterServer<TMessage>(string rpcName, BreakoutRpcHandler<TMessage> handler)
+        public static void RegisterServer<TMessage>(string rpcName, BreakoutRpcHandler<TMessage> handler, BreakoutRpcRateLimit rateLimit)
             where TMessage : IBreakoutSerializable, new()
         {
-            Register(ServerHandlers, rpcName, new Handler<TMessage>(handler));
-            BreakoutLog.Info("Registered server RPC '{0}' for {1}.", rpcName, typeof(TMessage).FullName);
+            Register(ServerHandlers, rpcName, new Handler<TMessage>(handler, rateLimit));
+            BreakoutLog.Info(
+                "Registered server RPC '{0}' for {1} with {2}.",
+                rpcName,
+                typeof(TMessage).FullName,
+                DescribeRateLimit(rateLimit));
         }
 
         public static void RegisterClient<TMessage>(string rpcName, BreakoutRpcHandler<TMessage> handler)
             where TMessage : IBreakoutSerializable, new()
         {
-            Register(ClientHandlers, rpcName, new Handler<TMessage>(handler));
+            Register(ClientHandlers, rpcName, new Handler<TMessage>(handler, BreakoutRpcRateLimit.Unlimited));
             BreakoutLog.Info("Registered client RPC '{0}' for {1}.", rpcName, typeof(TMessage).FullName);
         }
 
@@ -221,17 +225,6 @@ namespace BreakoutMods.BreakoutNet
                 envelope.MessageTypeName,
                 envelope.Sequence));
 
-            if (isServerSide && !isFromServer)
-            {
-                string limitKey = senderPeerId + ":" + envelope.RpcName;
-                if (!InboundClientLimiter.Allow(limitKey))
-                {
-                    BreakoutLog.Malformed(senderPeerId, "Rate-limited inbound RPC '{0}' from peer {1}.", envelope.RpcName, senderPeerId);
-                    BreakoutCoreHookRegistry.PublishRpcRejected(senderPeerId, envelope.RpcName, "Rate-limited inbound RPC.", "rate-limit");
-                    return;
-                }
-            }
-
             Dictionary<string, IHandler> handlers = isServerSide ? ServerHandlers : ClientHandlers;
             IHandler handler;
             if (!handlers.TryGetValue(envelope.RpcName, out handler))
@@ -259,6 +252,27 @@ namespace BreakoutMods.BreakoutNet
                     envelope.MessageTypeName);
                 BreakoutCoreHookRegistry.PublishRpcRejected(senderPeerId, envelope.RpcName, "Message type mismatch.", "type-mismatch");
                 return;
+            }
+
+            if (isServerSide && !isFromServer)
+            {
+                BreakoutRpcRateLimit rateLimit = handler.RateLimit ?? BreakoutRpcRateLimit.Default;
+                if (rateLimit.Enabled)
+                {
+                    string limitKey = senderPeerId + ":" + envelope.RpcName;
+                    if (!InboundClientLimiter.Allow(limitKey, Time.realtimeSinceStartup, rateLimit.Capacity, rateLimit.RefillPerSecond))
+                    {
+                        BreakoutLog.Malformed(
+                            senderPeerId,
+                            "Rate-limited inbound RPC '{0}' from peer {1}; capacity={2:0.##}, refill={3:0.##}/s.",
+                            envelope.RpcName,
+                            senderPeerId,
+                            rateLimit.Capacity,
+                            rateLimit.RefillPerSecond);
+                        BreakoutCoreHookRegistry.PublishRpcRejected(senderPeerId, envelope.RpcName, "Rate-limited inbound RPC.", "rate-limit");
+                        return;
+                    }
+                }
             }
 
             BreakoutRpcContext context = new BreakoutRpcContext(
@@ -347,6 +361,20 @@ namespace BreakoutMods.BreakoutNet
             return package;
         }
 
+        private static string DescribeRateLimit(BreakoutRpcRateLimit rateLimit)
+        {
+            rateLimit = rateLimit ?? BreakoutRpcRateLimit.Default;
+            if (!rateLimit.Enabled)
+            {
+                return "no inbound client rate limit";
+            }
+
+            return string.Format(
+                "inbound client rate limit capacity={0:0.##}, refill={1:0.##}/s",
+                rateLimit.Capacity,
+                rateLimit.RefillPerSecond);
+        }
+
         private static bool IsSenderServer(long senderPeerId)
         {
             if (ZNet.instance == null)
@@ -367,6 +395,8 @@ namespace BreakoutMods.BreakoutNet
         {
             string MessageTypeName { get; }
 
+            BreakoutRpcRateLimit RateLimit { get; }
+
             void Invoke(BreakoutRpcContext context, ZPackage package);
         }
 
@@ -374,15 +404,22 @@ namespace BreakoutMods.BreakoutNet
             where TMessage : IBreakoutSerializable, new()
         {
             private readonly BreakoutRpcHandler<TMessage> handler;
+            private readonly BreakoutRpcRateLimit rateLimit;
 
-            public Handler(BreakoutRpcHandler<TMessage> handler)
+            public Handler(BreakoutRpcHandler<TMessage> handler, BreakoutRpcRateLimit rateLimit)
             {
                 this.handler = handler ?? throw new ArgumentNullException(nameof(handler));
+                this.rateLimit = rateLimit ?? BreakoutRpcRateLimit.Default;
             }
 
             public string MessageTypeName
             {
                 get { return typeof(TMessage).FullName; }
+            }
+
+            public BreakoutRpcRateLimit RateLimit
+            {
+                get { return rateLimit; }
             }
 
             public void Invoke(BreakoutRpcContext context, ZPackage package)

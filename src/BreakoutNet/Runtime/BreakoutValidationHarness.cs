@@ -41,6 +41,14 @@ namespace BreakoutMods.BreakoutNet
             return limiter.Allow("peer:rpc", 0f) && !limiter.Allow("peer:rpc", 0.01f);
         }
 
+        public static bool RateLimiterUsesCustomPolicy()
+        {
+            BreakoutRateLimiter limiter = new BreakoutRateLimiter(1f, 0f);
+            BreakoutRpcRateLimit policy = BreakoutRpcRateLimit.ForMessagesPerSecond(60f, 3f);
+            return limiter.Allow("peer:voice", 0f, policy.Capacity, policy.RefillPerSecond)
+                   && limiter.Allow("peer:voice", 0.01f, policy.Capacity, policy.RefillPerSecond);
+        }
+
         public static bool EventWithMultipleSubscribersIsDelivered()
         {
             return BreakoutEventRegistry.EventWithMultipleSubscribersIsDeliveredForTest();

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+- Added per-server-RPC inbound client rate limit policies.
+- Added `BreakoutRpcRateLimit` helpers for high-frequency streams such as VOIP frames.
+- Kept the conservative default rate limit for normal RPCs.
+
 ## 0.2.0
 
 - Added scoped local event bus for typed and named extension events.

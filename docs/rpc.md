@@ -48,6 +48,21 @@ BreakoutNet rejects:
 
 Use `context.Reject("reason")` when your own server-side policy denies a request.
 
+## Rate Limits
+
+Server RPC handlers use a conservative inbound client token bucket by default. This is suitable for admin commands, settings requests, join checks, and normal gameplay events.
+
+High-frequency streams can register a larger policy:
+
+```csharp
+BreakoutRpc.Server.Register<VoiceFrame>(
+    "voip.voice.frame",
+    OnVoiceFrame,
+    BreakoutRpcRateLimit.ForMessagesPerSecond(60f, 3f));
+```
+
+Keep any domain-specific validation in the receiving mod. For example, a VOIP mod should still validate frame duration and apply its own voice-aware sender limit after BreakoutNet accepts the package.
+
 ## Broadcast Helpers
 
 ```csharp

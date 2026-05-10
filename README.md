@@ -19,7 +19,7 @@ Valheim mods often need the same networking building blocks:
 - The server broadcasts an event to all players or nearby players.
 - Clients apply server-owned settings and reject spoofed settings.
 
-BreakoutNet keeps those patterns boring and reusable so mods can share the same network layer.
+BreakoutNet keeps those patterns boring and reusable so mods like JoinGuard, VOIP, Discord admin tools, and RP systems can share the same network layer.
 
 ## Scoped Mod Context
 
@@ -129,6 +129,15 @@ Every BreakoutNet package includes:
 
 BreakoutNet rejects unknown protocol versions, unregistered RPC names, client-side messages from non-server peers, mismatched DTO types, and excessive inbound client RPCs.
 
+Server RPCs use a conservative inbound client rate limit by default. High-frequency streams such as voice frames can opt into a larger token bucket:
+
+```csharp
+BreakoutRpc.Server.Register<VoiceFrame>(
+    "voip.voice.frame",
+    OnVoiceFrame,
+    BreakoutRpcRateLimit.ForMessagesPerSecond(60f, 3f));
+```
+
 ## Extension Events
 
 Mods can publish local typed events for internal module communication:
@@ -171,3 +180,4 @@ Deploy into this Valheim server install only when you explicitly ask for it:
 
 - BepInEx 5.x
 - Valheim assemblies
+- no Jotunn dependency for `0.1`

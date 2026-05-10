@@ -8,7 +8,7 @@ namespace BreakoutMods.BreakoutNet
     {
         public const string PluginGuid = "com.breakoutmods.valheim.breakoutnet";
         public const string PluginName = "BreakoutNet";
-        public const string PluginVersion = "0.2.0";
+        public const string PluginVersion = "0.2.1";
 
         private GameObject runnerObject;
 
