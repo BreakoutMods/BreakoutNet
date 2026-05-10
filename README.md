@@ -6,6 +6,10 @@ BreakoutNet is a small client/server helper library for Valheim mods. It wraps t
 
 GitHub: [BreakoutMods/BreakoutNet](https://github.com/BreakoutMods/BreakoutNet)
 
+Community: [BreakoutMods Discord](https://discord.gg/ArmCF3nscW)
+
+Support development: [BreakoutMods Patreon](https://www.patreon.com/breakoutmods)
+
 ## Why BreakoutNet Exists
 
 Valheim mods often need the same networking building blocks:
