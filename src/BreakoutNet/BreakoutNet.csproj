@@ -2,7 +2,7 @@
   <PropertyGroup>
     <AssemblyName>BreakoutNet</AssemblyName>
     <RootNamespace>BreakoutMods.BreakoutNet</RootNamespace>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Authors>BreakoutMods</Authors>
     <Description>BreakoutMods Valheim client/server networking helper API.</Description>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>

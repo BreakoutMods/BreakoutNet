@@ -1,4 +1,5 @@
 using BepInEx;
+using BepInEx.Logging;
 using BreakoutMods.BreakoutNet;
 using UnityEngine;
 
@@ -15,16 +16,29 @@ namespace BreakoutMods.BreakoutNet.Example
         private const string RequestRpc = "breakoutnet.example.joincheck";
         private const string ResultRpc = "breakoutnet.example.joincheck.result";
         private const string SettingsName = "breakoutnet.example.server";
+        private const string NamedEvent = "breakoutnet.example.public.loaded";
 
+        internal static ManualLogSource ExampleLog { get; private set; }
+
+        private BreakoutModApp breakoutApp;
         private float nextClientRequest;
 
         private void Awake()
         {
+            ExampleLog = Logger;
+            breakoutApp = BreakoutNet.ForPlugin(this, PluginGuid)
+                .AddShared<ExampleSharedModule>()
+                .AddServer<ExampleServerModule>()
+                .AddClient<ExampleClientModule>()
+                .Build();
+
             BreakoutRpc.Server.Register<JoinCheckRequest>(RequestRpc, OnJoinCheckRequest);
             BreakoutRpc.Client.Register<JoinCheckResult>(ResultRpc, OnJoinCheckResult);
 
             BreakoutSettingsSync.RegisterServerSettings(SettingsName, GetServerSettings);
             BreakoutSettingsSync.Client.Register<ExampleServerSettings>(SettingsName, ApplyServerSettings);
+
+            breakoutApp.Context.Events.Publish(NamedEvent, new ExampleNamedEvent("Example plugin published a named extension event."));
 
             Logger.LogInfo("Example BreakoutNet plugin loaded. Press F8 in world to send a sample request.");
         }
@@ -93,6 +107,83 @@ namespace BreakoutMods.BreakoutNet.Example
         {
             Logger.LogInfo($"Applied example settings: radius={settings.VoiceRadius}, requireMods={settings.RequireMatchingMods}");
         }
+
+        private void OnDestroy()
+        {
+            if (breakoutApp != null)
+            {
+                breakoutApp.Dispose();
+                breakoutApp = null;
+            }
+        }
+    }
+
+    internal sealed class ExampleSharedModule : BreakoutSharedModule
+    {
+        public override void Initialize(BreakoutModuleContext context)
+        {
+            base.Initialize(context);
+            Context.Hooks.OnNetworkReady(OnNetworkReady);
+        }
+
+        private void OnNetworkReady(BreakoutNetworkReadyEvent evt)
+        {
+            Context.Events.Publish(new ExampleCustomEvent("Network is ready inside the shared module."));
+        }
+    }
+
+    internal sealed class ExampleClientModule : BreakoutClientModule
+    {
+        public override void Initialize(BreakoutModuleContext context)
+        {
+            base.Initialize(context);
+            Context.Events.Subscribe<ExampleCustomEvent>(OnCustomEvent);
+            Context.Events.Subscribe<ExampleNamedEvent>("breakoutnet.example.public.loaded", OnNamedEvent);
+        }
+
+        private static void OnCustomEvent(ExampleCustomEvent evt)
+        {
+            ExampleBreakoutNetPlugin.ExampleLog.LogInfo("Client module received custom event: " + evt.Message);
+        }
+
+        private static void OnNamedEvent(ExampleNamedEvent evt)
+        {
+            ExampleBreakoutNetPlugin.ExampleLog.LogInfo("Client module received named event: " + evt.Message);
+        }
+    }
+
+    internal sealed class ExampleServerModule : BreakoutServerModule
+    {
+        public override void Initialize(BreakoutModuleContext context)
+        {
+            base.Initialize(context);
+            Context.Hooks.OnPeerJoined(OnPeerJoined);
+        }
+
+        private static void OnPeerJoined(BreakoutPeerChangedEvent evt)
+        {
+            ExampleBreakoutNetPlugin.ExampleLog.LogInfo("Server module observed peer join: " + evt.PeerId);
+        }
+    }
+
+    public sealed class ExampleCustomEvent : IBreakoutEvent
+    {
+        public ExampleCustomEvent(string message)
+        {
+            Message = message;
+        }
+
+        public string Message { get; }
+    }
+
+    public sealed class ExampleNamedEvent : IBreakoutEvent
+    {
+        public ExampleNamedEvent(string message)
+        {
+            Message = message;
+        }
+
+        public string Message { get; }
     }
 
     public sealed class JoinCheckRequest : IBreakoutSerializable

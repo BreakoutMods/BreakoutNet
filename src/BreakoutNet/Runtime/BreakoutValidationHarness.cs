@@ -41,6 +41,21 @@ namespace BreakoutMods.BreakoutNet
             return limiter.Allow("peer:rpc", 0f) && !limiter.Allow("peer:rpc", 0.01f);
         }
 
+        public static bool EventWithMultipleSubscribersIsDelivered()
+        {
+            return BreakoutEventRegistry.EventWithMultipleSubscribersIsDeliveredForTest();
+        }
+
+        public static bool DisposedSubscriptionStopsDelivery()
+        {
+            return BreakoutEventRegistry.DisposedSubscriptionStopsDeliveryForTest();
+        }
+
+        public static bool SubscriberExceptionDoesNotStopDispatch()
+        {
+            return BreakoutEventRegistry.SubscriberExceptionDoesNotStopDispatchForTest();
+        }
+
         private sealed class EmptyMessage : IBreakoutSerializable
         {
             public void Write(ZPackage package)

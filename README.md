@@ -17,6 +17,29 @@ Valheim mods often need the same networking building blocks:
 
 BreakoutNet keeps those patterns boring and reusable so mods can share the same network layer.
 
+## Scoped Mod Context
+
+Use a scoped context when a mod wants BreakoutNet-owned events, hooks, and future module-friendly APIs:
+
+```csharp
+private BreakoutModApp app;
+
+private void Awake()
+{
+    app = BreakoutNet.ForPlugin(this, "com.breakoutmods.valheim.example")
+        .AddShared<SharedModule>()
+        .AddServer<ServerModule>()
+        .AddClient<ClientModule>()
+        .Build();
+}
+```
+
+For lightweight integrations without module ownership:
+
+```csharp
+BreakoutModuleContext context = BreakoutNet.ForMod("com.breakoutmods.valheim.example");
+```
+
 ## Terminology
 
 - **Dedicated server:** headless server process. It should relay and validate, but not create client-only UI/audio/input systems.
@@ -101,6 +124,32 @@ Every BreakoutNet package includes:
 - sequence number
 
 BreakoutNet rejects unknown protocol versions, unregistered RPC names, client-side messages from non-server peers, mismatched DTO types, and excessive inbound client RPCs.
+
+## Extension Events
+
+Mods can publish local typed events for internal module communication:
+
+```csharp
+Context.Events.Subscribe<MyEvent>(OnEvent);
+Context.Events.Publish(new MyEvent());
+```
+
+Named events are available for public extension points:
+
+```csharp
+Context.Events.Subscribe<MyEvent>("joinguard.policy.checked", OnPolicyChecked);
+Context.Events.Publish("joinguard.policy.checked", new MyEvent());
+```
+
+Read-only core hooks expose BreakoutNet lifecycle and RPC observations:
+
+```csharp
+Context.Hooks.OnNetworkReady(OnReady);
+Context.Hooks.OnPeerJoined(OnPeerJoined);
+Context.Hooks.OnRpcRejected(OnRpcRejected);
+```
+
+More detail: [docs/extensions.md](docs/extensions.md)
 
 ## Build
 

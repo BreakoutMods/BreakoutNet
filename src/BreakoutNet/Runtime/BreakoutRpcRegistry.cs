@@ -208,8 +208,18 @@ namespace BreakoutMods.BreakoutNet
             if (!BreakoutRpcEnvelope.TryReadHeader(package, out envelope, out reason))
             {
                 BreakoutLog.Malformed(senderPeerId, "Rejected malformed BreakoutNet packet from peer {0}: {1}", senderPeerId, reason);
+                BreakoutCoreHookRegistry.PublishRpcRejected(senderPeerId, string.Empty, reason, "malformed");
                 return;
             }
+
+            BreakoutCoreHookRegistry.PublishRpcReceived(new BreakoutRpcObservedEvent(
+                senderPeerId,
+                isFromServer,
+                isServerSide,
+                envelope.RpcName,
+                envelope.SenderModGuid,
+                envelope.MessageTypeName,
+                envelope.Sequence));
 
             if (isServerSide && !isFromServer)
             {
@@ -217,6 +227,7 @@ namespace BreakoutMods.BreakoutNet
                 if (!InboundClientLimiter.Allow(limitKey))
                 {
                     BreakoutLog.Malformed(senderPeerId, "Rate-limited inbound RPC '{0}' from peer {1}.", envelope.RpcName, senderPeerId);
+                    BreakoutCoreHookRegistry.PublishRpcRejected(senderPeerId, envelope.RpcName, "Rate-limited inbound RPC.", "rate-limit");
                     return;
                 }
             }
@@ -226,12 +237,14 @@ namespace BreakoutMods.BreakoutNet
             if (!handlers.TryGetValue(envelope.RpcName, out handler))
             {
                 BreakoutLog.Malformed(senderPeerId, "Rejected unregistered RPC '{0}' from peer {1}.", envelope.RpcName, senderPeerId);
+                BreakoutCoreHookRegistry.PublishRpcRejected(senderPeerId, envelope.RpcName, "Unregistered RPC.", "unregistered");
                 return;
             }
 
             if (!isServerSide && !isFromServer)
             {
                 BreakoutLog.Malformed(senderPeerId, "Rejected client-side RPC '{0}' from non-server peer {1}.", envelope.RpcName, senderPeerId);
+                BreakoutCoreHookRegistry.PublishRpcRejected(senderPeerId, envelope.RpcName, "Client-side RPC came from a non-server peer.", "unauthorized");
                 return;
             }
 
@@ -244,6 +257,7 @@ namespace BreakoutMods.BreakoutNet
                     senderPeerId,
                     handler.MessageTypeName,
                     envelope.MessageTypeName);
+                BreakoutCoreHookRegistry.PublishRpcRejected(senderPeerId, envelope.RpcName, "Message type mismatch.", "type-mismatch");
                 return;
             }
 
